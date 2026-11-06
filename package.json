@@ -1,0 +1,1 @@
+{ "name": "xray-tube-alignment-review", "private": true, "version": "1.0.0", "description": "Static review site in site/. No build step. The prototype itself is Python (see README).", "scripts": { "serve": "npx --yes serve site" } }

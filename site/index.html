@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>X-ray Tube Alignment</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%2315936A' stroke-width='3'/%3E%3Cpath d='M16 4v24M4 16h24' stroke='%230F1722' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div>
+    <div class="kick">Python · OpenCV ArUco · solvePnP · SQLite · phantom-testing prototype</div>
+    <h1>The tube's angle to the positioning ring, live, from a USB camera</h1>
+    <p class="lede">A working prototype: marker detection, camera calibration, 3D ring pose, red/green guidance with corrections, an estimated-risk display (clearly simulated), and acceptable/unacceptable feedback logged to SQLite. Every accuracy figure below is measured against known ground truth.</p>
+    <div class="kpis">
+      <div class="kpi"><b class="g"><span data-n="ring-rms">—</span>°</b><span>RMS angle error, whole ring of 4 markers, 144 known poses, calibrated camera</span></div>
+      <div class="kpi"><b class="r"><span data-n="single-rms">—</span>°</b><span>same frames, one marker at a time (the usual tutorial method)</span></div>
+      <div class="kpi"><b class="g"><span data-n="ring-flips">—</span> / <span data-n="flip-n">—</span></b><span>readings with the tilt direction flipped (ring); single marker: <span data-n="single-flips">—</span></span></div>
+      <div class="kpi"><b class="g"><span data-n="ms">—</span> ms</b><span>detection + pose per 1280×800 frame on 2 CPU cores</span></div>
+    </div>
+  </div>
+  <div><video class="hero-vid" src="media/demo.mp4" poster="media/poster.jpg" controls muted playsinline loop preload="metadata"></video>
+  <p class="note" style="color:#8FA1B4">Demonstration video, 19 s, recorded from the app in simulated-camera mode: −7° error corrected, exposure marked acceptable; drift to 7°, exposure marked unacceptable (simulated risk 85%).</p></div>
+</div></header>
+
+<nav class="tabs" aria-label="Sections"><div class="wrap" role="tablist">
+  <button data-tab="demo"><span class="n">01</span>The app</button>
+  <button data-tab="accuracy"><span class="n">02</span>Measured accuracy</button>
+  <button data-tab="ring"><span class="n">03</span>One marker vs the ring</button>
+  <button data-tab="risk"><span class="n">04</span>Risk &amp; feedback</button>
+  <button data-tab="camera"><span class="n">05</span>Camera &amp; calibration</button>
+  <button data-tab="run"><span class="n">06</span>Run it</button>
+</div></nav>
+
+<main class="wrap">
+<section class="tab" id="s-demo">
+  <h2>What the operator sees</h2>
+  <p class="sub">The camera view shows each detected marker outlined, the ring's axes, and an arrow from the tube axis to the ring centre. The side panel shows horizontal and vertical angle and centring, each green inside its tolerance and red outside. Below that come the estimated risk and plain corrections. X marks an exposure; A or U records the image verdict with the alignment at that moment.</p>
+  <div class="g2">
+    <div class="card"><h3>Misaligned: −7° horizontal</h3><img class="shot" src="media/poster.jpg" alt="Display showing ADJUST TUBE, -7 degrees, risk 91 percent"></div>
+    <div class="card"><h3>Corrected, exposure saved as acceptable</h3><img class="shot" src="media/aligned.jpg" alt="Display showing ALIGNED and a saved acceptable exposure"></div>
+  </div>
+  <div class="card" style="margin-top:18px"><h3>Exposure log written during the demo (SQLite)</h3>
+    <table class="t" id="logtb"><thead><tr><th>#</th><th>Time</th><th class="n">Horizontal</th><th class="n">Vertical</th><th class="n">Total</th><th class="n">Centring</th><th class="n">Distance</th><th class="n">Markers</th><th class="n">Risk shown</th><th>Model</th><th>Verdict</th></tr></thead><tbody></tbody></table>
+    <p class="note">One row per exposure; E exports CSV. Raw (unsmoothed) values are stored, so analysis is not affected by the display filter.</p></div>
+</section>
+
+<section class="tab" id="s-accuracy">
+  <h2>Accuracy, measured against ground truth</h2>
+  <p class="sub">A synthetic camera renders the marker ring at exactly known poses through a distorting lens (1280×800, 70° field of view, barrel distortion, blur and sensor noise). The pipeline first calibrates that camera from 25 rendered ChArUco views, as you would with a printed board. With the calibrated values, it then estimates 144 poses: 4 distances × 12 orientations × 3 noise draws, with random centring offset and ring rotation.</p>
+  <div class="tiles" id="acc-tiles"></div>
+  <div class="g2">
+    <div class="card"><h3>Angle error by distance (RMS)</h3><div class="legend"><span><i style="background:#15936A"></i>whole ring, 4 markers</span><span><i style="background:#D0454B"></i>single marker</span></div><div id="ch-dist"></div></div>
+    <div class="card"><h3>Measured vs true horizontal angle (all 144 frames)</h3><div class="legend"><span><i class="dot" style="background:#15936A"></i>whole ring</span><span><i class="dot" style="background:#D0454B"></i>single marker</span></div><div id="ch-scatter"></div></div>
+  </div>
+  <p class="note">Not covered by the synthetic test: real print quality, glare on glossy labels, motion blur from a moving tube, and the dental phantom itself. Those are the first things to check on the phantom.</p>
+</section>
+
+<section class="tab" id="s-ring">
+  <h2>Why the pose uses the whole ring, not one marker</h2>
+  <p class="sub">A single small square seen nearly face-on fits two mirror-image tilts almost equally well. When the tube is close to aligned, the markers face the camera, which is exactly where this ambiguity is worst. Solving one pose from all marker corners spread around the ring removes the ambiguity and averages out corner noise.</p>
+  <div class="g2">
+    <div class="card"><h3>Same still pose, 60 frames (true horizontal −7.0°)</h3><div class="legend"><span><i style="background:#15936A"></i>whole ring</span><span><i style="background:#D0454B"></i>single marker</span></div><div id="ch-jitter"></div><p class="note" id="jit-note"></p></div>
+    <div class="card"><h3>What it means for the risk display</h3>
+      <table class="t" id="ringtb"><tbody></tbody></table>
+      <p class="note">In the still-pose test, the single marker read a −7° tube as about <span data-n="single-mean">—</span>° on average. On the simulated curve, that moves the displayed risk from 85% to <span data-n="single-risk">—</span>%.</p></div>
+  </div>
+</section>
+
+<section class="tab" id="s-risk">
+  <h2>Estimated risk, and learning it from your feedback</h2>
+  <p class="sub">Until there is data, the risk is an illustrative logistic curve of the total angular deviation, always labelled SIMULATED on screen. It is tuned so that 7° shows 85%, matching the brief's example. Each acceptable or unacceptable verdict is stored with the measured angles. Once there are at least 20 verdicts with both outcomes, the app fits the same curve to them and labels it FITTED with the count.</p>
+  <div class="g2">
+    <div class="card"><h3>Simulated risk curve (illustrative, not clinical)</h3><div id="ch-curve"></div></div>
+    <div class="card"><h3>How many phantom exposures a fitted curve needs</h3><div class="legend"><span><i style="background:#15936A"></i>90% range of the fitted 50%-risk angle</span><span><i style="background:#0F1722;height:2px"></i>value used to make the test labels</span></div><div id="ch-fit"></div><p class="note" id="fit-note"></p></div>
+  </div>
+  <div class="card" style="margin-top:18px"><h3>Database: <code>exposures</code> table (SQLite; CSV export)</h3>
+    <table class="t"><tbody>
+      <tr><td><code>ts</code></td><td>time of the verdict</td><td><code>horizontal_deg, vertical_deg, total_deg</code></td><td>angles at the marked exposure (raw)</td></tr>
+      <tr><td><code>dx_mm, dy_mm, distance_mm</code></td><td>centring and distance</td><td><code>markers_seen, reproj_px</code></td><td>tracking quality at that moment</td></tr>
+      <tr><td><code>risk_pct, risk_model</code></td><td>what the screen showed, and whether simulated or fitted</td><td><code>feedback, operator, note</code></td><td>acceptable / unacceptable, who, free text</td></tr>
+    </tbody></table></div>
+</section>
+
+<section class="tab" id="s-camera">
+  <h2>Camera, calibration and zeroing</h2>
+  <div class="g3">
+    <div class="card cam rec"><div class="ribbon">Recommended</div><h3>Arducam 1MP OV9281 USB, global shutter</h3><ul>
+      <li>1280×800, up to 120 fps; mono is ideal for markers</li><li>Global shutter: no skew while the tube moves</li><li>M12 lens (70° H): set and lock focus at your working distance</li><li>UVC: Windows, Linux and Mac without drivers; 38×38 mm board</li><li>About $60 (RobotShop listing)</li></ul></div>
+    <div class="card cam"><div class="ribbon" style="color:var(--muted)">Lower-cost option</div><h3>ELP 1080p USB module (USBFHD01M)</h3><ul>
+      <li>UVC, driver-free</li><li>2.1 mm wide lens: more distortion, so calibrate carefully</li><li>Rolling shutter: hold the tube still while reading</li><li>About $41–55</li></ul></div>
+    <div class="card"><h3>Whatever the camera</h3><ul style="padding-left:18px;margin:6px 0 0;font-size:14.5px">
+      <li>Turn autofocus off: refocusing changes the focal length and breaks the calibration.</li><li>Choose a lens that can be focused at the tube-to-ring distance (typically 10–25 cm).</li><li>Matte marker labels: glare on glossy print hides corners.</li></ul></div>
+  </div>
+  <div class="g2" style="margin-top:18px">
+    <div class="card"><h3>Calibration (printed ChArUco board)</h3><table class="t" id="caltb"><tbody></tbody></table><p class="note">Board image and a true-scale marker sheet (with a 50 mm print check) are included: <a href="media/charuco_board.png">charuco_board.png</a>, <a href="media/ring_markers.pdf">ring_markers.pdf</a>.</p></div>
+    <div class="card"><h3>Zeroing the camera mount</h3><p class="note" style="margin-top:0">The camera is clamped to the tube, never perfectly on its axis. With a 2° + 2° mounting offset:</p><table class="t" id="zerotb"><thead><tr><th class="n">True</th><th class="n">Not zeroed</th><th class="n">Zeroed (Z key)</th></tr></thead><tbody></tbody></table>
+      <p class="note">Zero once per mounting, with the tube aligned using your current reference method (e.g. a jig).</p></div>
+  </div>
+</section>
+
+<section class="tab" id="s-run">
+  <h2>Run it</h2>
+  <div class="g2">
+    <div class="card"><h3>Setup (Windows, macOS or Linux; Python 3.10+)</h3><pre>python -m venv .venv && . .venv/bin/activate     <span class="c"># Windows: .venv\Scripts\activate</span>
+pip install -r requirements.txt                  <span class="c"># opencv-contrib-python, numpy, pillow</span>
+python -m pytest -q                              <span class="c"># 13 tests</span>
+
+<span class="c"># no hardware needed: simulated camera</span>
+<span class="c"># J/L turn, I/K tilt, F/H/T/G move the tube; X A U Z E Q as in the live app</span>
+python -m xray_align.app --sim
+
+<span class="c"># real camera</span>
+python -m xray_align.print_markers --out ring_markers.pdf
+python -m xray_align.calibrate --board-png charuco.png
+python -m xray_align.calibrate --camera 0 --out camera.json
+python -m xray_align.app --camera 0 --calib camera.json</pre></div>
+    <div class="card"><h3>In the folder</h3><table class="t"><tbody>
+      <tr><td><code>xray_align/detect.py</code></td><td>ArUco detection, whole-ring pose (SQPnP + LM), single-marker baseline, smoothing</td></tr>
+      <tr><td><code>xray_align/geometry.py</code></td><td>Ring layout (JSON), alignment angles, zeroing</td></tr>
+      <tr><td><code>xray_align/app.py</code></td><td>Live app: camera / video / simulated, keys, recording</td></tr>
+      <tr><td><code>xray_align/risk.py</code></td><td>Simulated curve, logistic fit from feedback, corrections</td></tr>
+      <tr><td><code>xray_align/store.py</code></td><td>SQLite log, CSV export</td></tr>
+      <tr><td><code>xray_align/calibrate.py</code></td><td>ChArUco calibration (live or from images)</td></tr>
+      <tr><td><code>bench/</code></td><td>The measurements on this page</td></tr></tbody></table></div>
+  </div>
+</section>
+</main>
+<footer><div class="wrap g2">
+  <div><h3>Measured</h3><p>Accuracy, jitter, calibration and zeroing were measured on synthetic frames with known ground truth: OpenCV 4.10, 1280×800, lens distortion, blur and noise. The calibration was solved by the pipeline itself, not given to it. The app ran end to end in simulated-camera mode to record the video and the log. The live window and key handling were also run on Linux under a virtual display, with SQLite and CSV checked afterwards.</p></div>
+  <div><h3>Not measured</h3><p>A physical camera, real marker prints and lighting, a moving tube, and the dental phantom. The app was not run on Windows or macOS here. The risk percentage is simulated (illustrative) until fitted to your phantom feedback. Prototype for phantom testing only, not for clinical decisions.</p></div>
+</div></footer>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
