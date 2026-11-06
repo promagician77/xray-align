@@ -1,0 +1,9 @@
+{
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "site",
+  "headers": [
+    { "source": "/(.*)", "headers": [ { "key": "X-Robots-Tag", "value": "noindex, nofollow" } ] },
+    { "source": "/media/(.*)", "headers": [ { "key": "Cache-Control", "value": "public, max-age=86400" } ] }
+  ]
+}

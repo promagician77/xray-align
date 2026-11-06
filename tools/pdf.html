@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>X-ray tube alignment: prototype brief</title>
+<style>
+@font-face{font-family:Manrope;src:url(../site/fonts/manrope-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:Manrope;src:url(../site/fonts/manrope-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Manrope;src:url(../site/fonts/manrope-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Manrope;src:url(../site/fonts/manrope-latin-800-normal.woff2);font-weight:800}
+@font-face{font-family:"Red Hat Mono";src:url(../site/fonts/red-hat-mono-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:"Red Hat Mono";src:url(../site/fonts/red-hat-mono-latin-500-normal.woff2);font-weight:500}
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:#0F1722;font:400 10.4px/1.45 Manrope,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+section.pg{width:210mm;height:297mm;overflow:hidden;position:relative;page-break-after:always;padding:0 13mm 0}
+section.pg:last-child{page-break-after:auto}
+.band{background:#0E1217;color:#E8EDF2;margin:0 -13mm;padding:8mm 13mm 5mm}
+.kick{font:500 8.4px "Red Hat Mono",monospace;letter-spacing:.07em;text-transform:uppercase;color:#8FA1B4}
+h1{font:800 23px/1.1 Manrope;letter-spacing:-.02em;margin:5px 0 6px}
+.lede{color:#B9C5D2;font-size:11px;margin:0;max-width:165mm}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#273140;border:1px solid #273140;border-radius:5px;overflow:hidden;margin-top:5mm}
+.kpi{background:#141A22;padding:7px 9px}
+.kpi b{display:block;font:800 17px/1.1 Manrope;letter-spacing:-.02em}.g{color:#47D19B}.r{color:#FF7A7F}
+.kpi span{display:block;font-size:8.6px;color:#A9B6C4;margin-top:2px;line-height:1.3}
+h2{font:800 13.5px/1.2 Manrope;margin:3.6mm 0 1.6mm;letter-spacing:-.01em}
+h3{font:700 10.6px/1.3 Manrope;margin:0 0 3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.shot{width:100%;display:block;border-radius:4px;border:1px solid #DCE1E7}
+.cap{font-size:8.8px;color:#5D6977;margin-top:2px}
+ul{margin:0;padding-left:13px}li{margin-bottom:2px}
+table{width:100%;border-collapse:collapse;font-size:9.6px}
+th{text-align:left;font:600 8px Manrope;letter-spacing:.06em;text-transform:uppercase;color:#5D6977;border-bottom:1px solid #DCE1E7;padding:3px 5px}
+td{border-bottom:1px solid #ECEFF3;padding:3px 5px}
+td.n,th.n{text-align:right;font-family:"Red Hat Mono",monospace;white-space:nowrap}
+.box{border:1px solid #DCE1E7;border-radius:5px;padding:3.2mm 3.6mm}
+.box.rec{border-top:3px solid #15936A}
+.rib{font:700 7.6px Manrope;letter-spacing:.09em;text-transform:uppercase;color:#15936A}
+.chart{position:relative}.chart svg{display:block;width:100%;height:auto}
+.chart .ax text{font:500 8.4px "Red Hat Mono",monospace;fill:#5D6977}.chart .ax line{stroke:#DCE1E7}.chart .grid line{stroke:#ECEFF3}
+.chart .lbl{font:600 8.6px Manrope !important;fill:#3B4757}
+.chart svg text.lbl{font-size:8.6px !important}
+.tip{display:none}
+.legend{display:flex;gap:10px;font-size:8.8px;color:#3B4757;margin:0 0 2px}.legend i{display:inline-block;width:12px;height:2.5px;vertical-align:3px;margin-right:4px}
+.foot{position:absolute;left:13mm;right:13mm;bottom:8mm;font-size:8.4px;color:#5D6977;border-top:1px solid #DCE1E7;padding-top:2.5mm;display:flex;justify-content:space-between}
+.mvn{display:grid;grid-template-columns:1fr 1fr;gap:5mm;font-size:9.4px}
+.mvn p{margin:0}
+code{font:400 9px "Red Hat Mono",monospace;background:#ECEFF3;padding:0 3px;border-radius:2px}
+</style></head>
+<body>
+<section class="pg">
+  <div class="band">
+    <div class="kick">Dental X-ray positioning · Python / OpenCV · proof of concept for phantom testing</div>
+    <h1>Tube-to-ring alignment from a USB camera: working prototype, measured</h1>
+    <p class="lede">ArUco markers on the positioning ring, a calibrated camera on the tube, and one 3D pose solved from all ring markers together. It shows the angular deviation live with red/green guidance and corrections, an estimated-risk display (clearly SIMULATED), and acceptable/unacceptable feedback logged to SQLite and CSV.</p>
+    <div class="kpis">
+      <div class="kpi"><b class="g" data-k="ring_rms"></b><span>RMS angle error, whole ring, 144 known poses</span></div>
+      <div class="kpi"><b class="r" data-k="single_rms"></b><span>same frames, one marker at a time</span></div>
+      <div class="kpi"><b class="g" data-k="flips"></b><span>tilt direction flipped (ring) · single marker: <i data-k="sflips" style="font-style:normal"></i></span></div>
+      <div class="kpi"><b class="g" data-k="ms"></b><span>detection + pose per 1280×800 frame</span></div>
+    </div>
+  </div>
+
+  <h2>What the operator sees</h2>
+  <div class="two">
+    <div><img class="shot" src="../site/media/poster.jpg"><div class="cap">−7° horizontal: ADJUST TUBE, corrections listed, simulated risk shown.</div></div>
+    <div><img class="shot" src="../site/media/aligned.jpg"><div class="cap">Corrected: ALIGNED; X then A saved the exposure as acceptable.</div></div>
+  </div>
+
+  <h2>What is built and runs</h2>
+  <div class="two">
+    <ul>
+      <li><b>Live USB detection:</b> ArUco markers with sub-pixel corners; works with 2–4 markers visible.</li>
+      <li><b>Camera calibration:</b> printable ChArUco board, live capture, saved <code>camera.json</code>.</li>
+      <li><b>3D pose of the whole ring</b> (SQPnP + LM refinement), not per marker.</li>
+      <li><b>Guidance:</b> horizontal / vertical angle and centring bars with tolerance bands, plus plain corrections ("Turn tube 7.2° left").</li>
+    </ul>
+    <ul>
+      <li><b>Risk display:</b> 7° → 85% (the brief's example), always labelled SIMULATED; refitted from your verdicts after 20 or more.</li>
+      <li><b>Feedback:</b> X marks an exposure; A or U saves the verdict with angles, centring, distance and tracking quality (SQLite, CSV export).</li>
+      <li><b>Zeroing</b> removes the camera's mounting offset (Z key).</li>
+      <li><b>Included:</b> source, 13 tests, setup README, marker sheet, demo video, simulated-camera mode.</li>
+    </ul>
+  </div>
+
+  <h2>Why one pose from the whole ring</h2>
+  <div class="two">
+    <table id="ringtb"></table>
+    <div class="box" style="font-size:9.8px"><h3>Near alignment is where a single marker fails</h3>A small square seen almost face-on fits two mirror-image tilts nearly equally well, and an aligned tube sees the markers face-on. In a still-pose test at −7.0°, one marker averaged <b data-k="smean"></b> (risk display 85% → <b data-k="srisk"></b>). The whole ring averaged <b data-k="rmean"></b>, with <b data-k="rstd"></b> frame-to-frame spread.</div>
+  </div>
+  <h2>Feedback loop, as recorded in the demo</h2>
+  <div class="two">
+    <div><img class="shot" src="../site/media/drift.jpg"><div class="cap">Tube drifts to 7°: X then U saves the exposure as unacceptable, with the risk shown.</div></div>
+    <div><table id="logtb"></table>
+      <div class="box" style="margin-top:3mm;font-size:9.6px">Every verdict is stored with the raw angles, centring, distance, markers seen and reprojection error. Once 20 or more verdicts with both outcomes exist, the curve is refitted to them and the label changes from SIMULATED to FITTED (n).</div></div>
+  </div>
+  <div class="foot"><span>Accuracy figures: synthetic camera with known ground truth (method on page 2). Phantom testing only; not for clinical decisions.</span><span>1 / 2</span></div>
+</section>
+
+<section class="pg" style="padding-top:10mm">
+  <div class="two">
+    <div><h3>Angle error by distance (RMS, 36 poses each)</h3><div class="legend"><span><i style="background:#15936A"></i>whole ring</span><span><i style="background:#D0454B"></i>single marker</span></div><div id="c1" style="height:150px"></div></div>
+    <div><h3>Same still pose, 60 frames (true −7.0°)</h3><div class="legend"><span><i style="background:#15936A"></i>whole ring</span><span><i style="background:#D0454B"></i>single marker</span></div><div id="c2"></div></div>
+  </div>
+  <div class="two" style="margin-top:4mm">
+    <div><h3>Estimated risk curve (SIMULATED until fitted)</h3><div id="c3"></div></div>
+    <div><h3>Verdicts needed for a stable fitted curve</h3><div class="legend"><span><i style="background:#15936A"></i>90% range of the fitted 50%-risk angle</span></div><div id="c4"></div><div class="cap" id="fitcap"></div></div>
+  </div>
+
+  <h2>Camera recommendation</h2>
+  <div class="two" style="grid-template-columns:1.1fr 1fr">
+    <div class="box rec"><div class="rib">Recommended</div><h3>Arducam 1MP OV9281 USB, global shutter (about $60)</h3>
+      <ul><li>Mono, 1280×800 at up to 120 fps: crisp marker edges, no rolling-shutter skew while the tube moves.</li><li>M12 lens, 70° horizontal: focus once at the tube-to-ring distance and lock it.</li><li>UVC (driver-free on Windows, macOS and Linux); 38×38 mm board mounts easily on the tube.</li></ul></div>
+    <div class="box"><div class="rib" style="color:#5D6977">Lower-cost option</div><h3>ELP USBFHD01M 1080p, 2.1 mm lens (about $41–55)</h3>
+      <ul><li>UVC, cheap and common.</li><li>Rolling shutter and a wide, more distorted lens: hold the tube still while reading, and calibrate carefully.</li></ul>
+      <div class="cap" style="margin-top:3px">Either camera: autofocus off. Refocusing changes the focal length and breaks the calibration.</div></div>
+  </div>
+
+  <div class="two" style="margin-top:4mm">
+    <div><h3>Calibration solved by the pipeline (25 ChArUco views)</h3><table id="caltb"></table></div>
+    <div><h3>Zeroing a 2° + 2° camera mounting offset</h3><table id="zerotb"></table></div>
+  </div>
+
+  <h2>How it was measured, and what was not</h2>
+  <div class="mvn">
+    <p><b>Measured.</b> A synthetic 1280×800 camera (70° field of view, barrel distortion, blur, sensor noise) rendered the ring at 144 known poses: 100–250 mm, up to ±15°, random centring and ring rotation. The pipeline calibrated that camera itself from rendered ChArUco views, then estimated every pose. The app ran end to end to record the demo video and its SQLite log. The live window and keys were also run on Linux under a virtual display.</p>
+    <p><b>Not measured.</b> A physical camera, real prints, glare and lighting, a moving tube, and the dental phantom. Windows and macOS were not run here. The risk percentage is illustrative until fitted to phantom verdicts. First phantom check: compare readings with a jig or protractor at several known angles. Prototype for phantom testing only, not for clinical decisions.</p>
+  </div>
+  <h2>Run it</h2>
+  <div style="background:#0E1217;color:#DDE6EE;border-radius:5px;padding:2.6mm 3.6mm;font:400 8.8px/1.6 'Red Hat Mono',monospace;white-space:pre">pip install -r requirements.txt  &amp;&amp;  python -m pytest -q              <span style="color:#7F8EA0"># 13 tests</span>
+python -m xray_align.app --sim                                     <span style="color:#7F8EA0"># no hardware: simulated camera</span>
+python -m xray_align.calibrate --camera 0 --out camera.json        <span style="color:#7F8EA0"># printed ChArUco board</span>
+python -m xray_align.app --camera 0 --calib camera.json            <span style="color:#7F8EA0"># live: X mark · A / U verdict · Z zero · E CSV</span></div>
+  <div class="foot"><span>Full interactive results, demo video and source: see the review link in the proposal.</span><span>2 / 2</span></div>
+</section>
+<script src="../site/charts.js"></script>
+<script>
+(async () => {
+  const j = async (p) => (await fetch(p)).json();
+  const [A, F] = await Promise.all([j("../site/data/accuracy.json"), j("../site/data/risk_fit.json")]);
+  const f = (v, d = 2) => Number(v).toFixed(d), sg = (v, d = 2) => (v < 0 ? "−" : v > 0 ? "+" : "") + Math.abs(v).toFixed(d);
+  const risk = (x) => 1 / (1 + Math.exp(-(Math.abs(x) - 5.3)));
+  const r = A.ring, s = A.single, J = A.jitter, c = A.calibration;
+  const K = { ring_rms: f(r.angle_err_rms_deg) + "°", single_rms: f(s.angle_err_rms_deg, 1) + "°", flips: `${r.sign_flips} / ${r.sign_checks}`, sflips: `${s.sign_flips} / ${s.sign_checks}`, ms: f(A.detect_pose_ms.mean, 0) + " ms",
+    smean: sg(J.single_mean_deg) + "°", srisk: Math.round(100 * risk(J.single_mean_deg)) + "%", rmean: sg(J.ring_mean_deg) + "°", rstd: f(J.ring_std_deg, 3) + "° SD" };
+  document.querySelectorAll("[data-k]").forEach((e) => (e.textContent = K[e.dataset.k]));
+  document.getElementById("ringtb").innerHTML = `<tr><th></th><th class="n">Whole ring</th><th class="n">Single marker</th></tr>` + [["RMS angle error", f(r.angle_err_rms_deg) + "°", f(s.angle_err_rms_deg) + "°"], ["95th percentile", f(r.angle_err_p95_deg) + "°", f(s.angle_err_p95_deg) + "°"], ["Worst of 144 frames", f(r.angle_err_max_deg) + "°", f(s.angle_err_max_deg) + "°"], ["Near aligned (within 3°), RMS", f(r.near_aligned_err_rms_deg) + "°", s.near_aligned_err_rms_deg != null ? f(s.near_aligned_err_rms_deg) + "°" : "—"], ["Tilt direction flipped (|angle| ≥ 2°)", `${r.sign_flips} of ${r.sign_checks}`, `${s.sign_flips} of ${s.sign_checks}`], ["Distance error RMS", f(r.dist_err_rms_mm) + " mm", f(s.dist_err_rms_mm) + " mm"]].map(([a, b, d]) => `<tr><td>${a}</td><td class="n" style="color:#15936A">${b}</td><td class="n" style="color:#D0454B">${d}</td></tr>`).join("");
+  const LOG = await j("../site/data/demo_log.json");
+  document.getElementById("logtb").innerHTML = `<tr><th>#</th><th class="n">Horiz.</th><th class="n">Vert.</th><th class="n">Total</th><th class="n">Risk shown</th><th>Verdict</th></tr>` + LOG.map((x) => `<tr><td>${x.id}</td><td class="n">${sg(x.horizontal_deg)}°</td><td class="n">${sg(x.vertical_deg)}°</td><td class="n">${f(x.total_deg)}°</td><td class="n">${f(x.risk_pct, 1)}%</td><td style="color:${x.feedback === "acceptable" ? "#15936A" : "#D0454B"};font-weight:600">${x.feedback}</td></tr>`).join("");
+  document.getElementById("caltb").innerHTML = [["Reprojection error (RMS)", f(c.rms_px, 3) + " px"], ["Focal length error", sg(c.fx_err_pct, 3) + "%"], ["Principal point error", `${sg(c.cx_err_px)}, ${sg(c.cy_err_px)} px`], ["Distortion k1 (true −0.1200)", f(c.k1_est, 4)]].map(([a, b]) => `<tr><td>${a}</td><td class="n">${b}</td></tr>`).join("");
+  document.getElementById("zerotb").innerHTML = `<tr><th class="n">True (h, v)</th><th class="n">Not zeroed</th><th class="n">Zeroed</th></tr>` + A.zeroing.cases.map((z) => `<tr><td class="n">${sg(z.true_h, 1)}°, 0.0°</td><td class="n" style="color:#D0454B">${sg(z.no_zero_h)}°, ${sg(z.no_zero_v)}°</td><td class="n" style="color:#15936A">${sg(z.zeroed_h)}°, ${sg(z.zeroed_v)}°</td></tr>`).join("");
+  const ds = [100, 150, 200, 250], G = "#15936A", R = "#D0454B", M = { l: 36, r: 8, t: 14, b: 36 };
+  lineChart(document.getElementById("c1"), { height: 210, margin: M, xDomain: [90, 260], yDomain: [0, 9], yTicks: 3, xTicks: 4, xLabel: "distance (mm)", yLabel: "RMS error (°)", series: [{ name: "ring", color: G, x: ds, y: ds.map((d) => r.rms_by_distance_deg[d]), width: 2.4 }, { name: "single", color: R, x: ds, y: ds.map((d) => s.rms_by_distance_deg[d]), width: 2.4 }] });
+  const xs = [...Array(J.series_ring.length).keys()];
+  lineChart(document.getElementById("c2"), { height: 210, margin: M, xDomain: [0, xs.length - 1], yDomain: [-11, -5], yTicks: 3, xTicks: 4, xLabel: "frame", yLabel: "measured (°)", refLines: [{ y: -7, label: "true −7.0°" }], series: [{ name: "ring", color: G, x: xs, y: J.series_ring, width: 1.8 }, { name: "single", color: R, x: xs, y: J.series_single, width: 1.4 }] });
+  const rx = Array.from({ length: 121 }, (_, i) => i / 10);
+  lineChart(document.getElementById("c3"), { height: 200, margin: M, xDomain: [0, 12], yDomain: [0, 1], yTicks: 4, xTicks: 6, yFmt: (v) => Math.round(v * 100) + "%", xLabel: "total deviation (°)", yLabel: "risk (SIMULATED)", refLines: [{ y: 0.85, label: "7° → 85%" }], series: [{ name: "risk", color: R, x: rx, y: rx.map(risk), width: 2.2 }] });
+  const ns = F.by_n.map((b) => b.n);
+  lineChart(document.getElementById("c4"), { height: 182, margin: M, xDomain: [0, 520], yDomain: [2.5, 6.5], yTicks: 4, xTicks: 5, xLabel: "verdicts", yLabel: "fitted 50% angle (°)", refLines: [{ y: F.true_theta50, label: "value used for the test labels" }], series: [{ name: "p5", color: G, x: ns, y: F.by_n.map((b) => b.theta50_p5), width: 2 }, { name: "p95", color: G, x: ns, y: F.by_n.map((b) => b.theta50_p95), width: 2 }] });
+  const b20 = F.by_n[0], b200 = F.by_n.find((b) => b.n === 200);
+  document.getElementById("fitcap").textContent = `${F.trials} simulated feedback sets per size: ±${f((b20.theta50_p95 - b20.theta50_p5) / 2, 1)}° spread at 20 verdicts, ±${f((b200.theta50_p95 - b200.theta50_p5) / 2, 1)}° at 200.`;
+  await document.fonts.ready; document.body.dataset.ready = "1";
+})();
+</script>
+</body></html>

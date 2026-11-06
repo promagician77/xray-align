@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.venv/
+data/exposures.sqlite
+data/exposures.csv
+camera.json
+config.bat
+node_modules
